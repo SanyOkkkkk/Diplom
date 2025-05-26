@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Финансовая аналитика - {{ company.name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            padding-top: 2rem;
+            background-color: #f9f9f9;
+        }
+        .analytics-container {
+            max-width: 1200px;
+            margin: auto;
+        }
+        .company-header {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .chart-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .metrics-table {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .metric-positive {
+            color: #28a745;
+        }
+        .metric-negative {
+            color: #dc3545;
+        }
+        .metric-neutral {
+            color: #6c757d;
+        }
+        .btn-group .btn {
+            margin-right: 10px;
+        }
+        .btn-group .btn:last-child {
+            margin-right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container analytics-container">
+        <!-- Заголовок компании -->
+        <div class="company-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1>{{ company.name }}</h1>
+                    <p class="mb-0"><strong>ИНН:</strong> {{ company.inn }} | <strong>ОКВЭД:</strong> {{ company.okved }} | <strong>Регион:</strong> {{ company.location }}</p>
+                </div>
+                <div class="btn-group">
+                    <a href="{{ url_for('index', query=request.args.get('query', ''), search_type=request.args.get('search_type', 'name'), page=request.args.get('page', 1)) }}" class="btn btn-secondary">← Назад к поиску</a>
+                    <a href="{{ url_for('company_details', inn=company.inn) }}" class="btn btn-primary">Детали компании</a>
+                </div>
+            </div>
+        </div>
+
+        {% if reports %}
+        <!-- Графики -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4>Выручка по годам</h4>
+                    <div id="revenue-chart"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4>Чистая прибыль по годам</h4>
+                    <div id="profit-chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4>Активы и обязательства</h4>
+                    <div id="balance-chart"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h4>Рентабельность</h4>
+                    <div id="profitability-chart"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Таблица с показателями -->
+        <div class="metrics-table">
+            <h4>Финансовые показатели по годам</h4>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Год</th>
+                            <th>Выручка</th>
+                            <th>Валовая прибыль</th>
+                            <th>Операционная прибыль</th>
+                            <th>Чистая прибыль</th>
+                            <th>Активы</th>
+                            <th>Собственный капитал</th>
+                            <th>Рентабельность по выручке</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <tr>
+                            <td><strong>{{ report.year }}</strong></td>
+                            <td>{{ "{:,.0f}".format(report.revenue_cur) if report.revenue_cur else "-" }}</td>
+                            <td>{{ "{:,.0f}".format(report.gross_profit_cur) if report.gross_profit_cur else "-" }}</td>
+                            <td>{{ "{:,.0f}".format(report.oper_profit_cur) if report.oper_profit_cur else "-" }}</td>
+                            <td class="{% if report.net_profit_cur %}{% if report.net_profit_cur > 0 %}metric-positive{% else %}metric-negative{% endif %}{% else %}metric-neutral{% endif %}">
+                                {{ "{:,.0f}".format(report.net_profit_cur) if report.net_profit_cur else "-" }}
+                            </td>
+                            <td>{{ "{:,.0f}".format(report.balance_assets_eoy) if report.balance_assets_eoy else "-" }}</td>
+                            <td>{{ "{:,.0f}".format(report.equity_eoy) if report.equity_eoy else "-" }}</td>
+                            <td class="{% if report.profitability %}{% if report.profitability > 0 %}metric-positive{% else %}metric-negative{% endif %}{% else %}metric-neutral{% endif %}">
+                                {{ "{:.1f}%".format(report.profitability) if report.profitability else "-" }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="alert alert-warning">
+            <h4>Нет данных для анализа</h4>
+            <p>Для данной компании отсутствуют финансовые отчеты в базе данных.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    {% if reports %}
+    <script>
+        // Данные для графиков
+        const chartData = {{ chart_data | safe }};
+
+        // График выручки
+        const revenueTrace = {
+            x: chartData.years,
+            y: chartData.revenue,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Выручка',
+            line: {color: '#007bff', width: 3},
+            marker: {size: 8}
+        };
+
+        Plotly.newPlot('revenue-chart', [revenueTrace], {
+            title: '',
+            xaxis: {title: 'Год'},
+            yaxis: {title: 'Рублей'},
+            margin: {t: 20}
+        });
+
+        // График прибыли
+        const profitTrace = {
+            x: chartData.years,
+            y: chartData.net_profit,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Чистая прибыль',
+            line: {color: '#28a745', width: 3},
+            marker: {size: 8}
+        };
+
+        Plotly.newPlot('profit-chart', [profitTrace], {
+            title: '',
+            xaxis: {title: 'Год'},
+            yaxis: {title: 'Рублей'},
+            margin: {t: 20}
+        });
+
+        // График активов и обязательств
+        const assetsTrace = {
+            x: chartData.years,
+            y: chartData.assets,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Активы',
+            line: {color: '#17a2b8', width: 3}
+        };
+
+        const equityTrace = {
+            x: chartData.years,
+            y: chartData.equity,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Собственный капитал',
+            line: {color: '#ffc107', width: 3}
+        };
+
+        Plotly.newPlot('balance-chart', [assetsTrace, equityTrace], {
+            title: '',
+            xaxis: {title: 'Год'},
+            yaxis: {title: 'Рублей'},
+            margin: {t: 20}
+        });
+
+        // График рентабельности
+        const profitabilityTrace = {
+            x: chartData.years,
+            y: chartData.profitability,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'Рентабельность по выручке',
+            line: {color: '#dc3545', width: 3},
+            marker: {size: 8}
+        };
+
+        Plotly.newPlot('profitability-chart', [profitabilityTrace], {
+            title: '',
+            xaxis: {title: 'Год'},
+            yaxis: {title: '%'},
+            margin: {t: 20}
+        });
+    </script>
+    {% endif %}
+</body>
+</html>

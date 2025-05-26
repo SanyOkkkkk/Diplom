@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Детали компании - {{ company.name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 2rem;
+            background-color: #f9f9f9;
+        }
+        .details-container {
+            max-width: 1000px;
+            margin: auto;
+        }
+        .company-info {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .reports-section {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .year-section {
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        .metric-row {
+            padding: 5px 0;
+            border-bottom: 1px solid #f8f9fa;
+        }
+        .metric-label {
+            font-weight: 500;
+        }
+        .metric-positive {
+            color: #28a745;
+        }
+        .metric-negative {
+            color: #dc3545;
+        }
+        .btn-group .btn {
+            margin-right: 10px;
+        }
+        .btn-group .btn:last-child {
+            margin-right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container details-container">
+        <!-- Информация о компании -->
+        <div class="company-info">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1>{{ company.name }}</h1>
+                <div class="btn-group">
+                    <a href="{{ url_for('index', query=request.args.get('query', ''), search_type=request.args.get('search_type', 'name'), page=request.args.get('page', 1)) }}" class="btn btn-secondary">← Назад к поиску</a>
+                    <a href="{{ url_for('analytics', inn=company.inn) }}" class="btn btn-primary">📊 Аналитика</a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="metric-row">
+                        <span class="metric-label">ИНН:</span> {{ company.inn }}
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Основной ОКВЭД:</span> {{ company.okved or "Не указан" }}
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Дополнительный ОКВЭД:</span> {{ company.okved_o or "Не указан" }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="metric-row">
+                        <span class="metric-label">Форма собственности:</span> {{ company.tip or "Не указана" }}
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Единица измерения:</span> {{ company.measure or "Не указана" }}
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Местоположение:</span> {{ company.location }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Финансовые отчеты -->
+        <div class="reports-section">
+            <h3>Финансовые отчеты</h3>
+
+            {% if reports %}
+                {% for report in reports %}
+                <div class="year-section">
+                    <h4 class="text-primary">{{ report.year }} год</h4>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h5>Отчет о прибылях и убытках</h5>
+                            <div class="metric-row">
+                                <span class="metric-label">Выручка:</span>
+                                {{ "{:,.0f}".format(report.revenue_cur) if report.revenue_cur else "Не указана" }}
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Валовая прибыль:</span>
+                                <span class="{% if report.gross_profit_cur %}{% if report.gross_profit_cur >= 0 %}metric-positive{% else %}metric-negative{% endif %}{% endif %}">
+                                    {{ "{:,.0f}".format(report.gross_profit_cur) if report.gross_profit_cur else "Не указана" }}
+                                </span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Операционная прибыль:</span>
+                                <span class="{% if report.oper_profit_cur %}{% if report.oper_profit_cur >= 0 %}metric-positive{% else %}metric-negative{% endif %}{% endif %}">
+                                    {{ "{:,.0f}".format(report.oper_profit_cur) if report.oper_profit_cur else "Не указана" }}
+                                </span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Прибыль до налогообложения:</span>
+                                <span class="{% if report.pbt_cur %}{% if report.pbt_cur >= 0 %}metric-positive{% else %}metric-negative{% endif %}{% endif %}">
+                                    {{ "{:,.0f}".format(report.pbt_cur) if report.pbt_cur else "Не указана" }}
+                                </span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Налог на прибыль:</span>
+                                {{ "{:,.0f}".format(report.income_tax_cur) if report.income_tax_cur else "Не указан" }}
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label"><strong>Чистая прибыль:</strong></span>
+                                <span class="{% if report.net_profit_cur %}{% if report.net_profit_cur >= 0 %}metric-positive{% else %}metric-negative{% endif %}{% endif %}">
+                                    <strong>{{ "{:,.0f}".format(report.net_profit_cur) if report.net_profit_cur else "Не указана" }}</strong>
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5>Бухгалтерский баланс</h5>
+                            <div class="metric-row">
+                                <span class="metric-label">Нематериальные активы:</span>
+                                {{ "{:,.0f}".format(report.intangible_assets_eoy) if report.intangible_assets_eoy else "Не указаны" }}
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Оборотные активы:</span>
+                                {{ "{:,.0f}".format(report.curr_assets_eoy) if report.curr_assets_eoy else "Не указаны" }}
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label"><strong>Баланс (активы):</strong></span>
+                                <strong>{{ "{:,.0f}".format(report.balance_assets_eoy) if report.balance_assets_eoy else "Не указан" }}</strong>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Собственный капитал:</span>
+                                {{ "{:,.0f}".format(report.equity_eoy) if report.equity_eoy else "Не указан" }}
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Долгосрочные обязательства:</span>
+                                {{ "{:,.0f}".format(report.lt_liabilities_eoy) if report.lt_liabilities_eoy else "Не указаны" }}
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Краткосрочные обязательства:</span>
+                                {{ "{:,.0f}".format(report.st_liabilities_eoy) if report.st_liabilities_eoy else "Не указаны" }}
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label"><strong>Баланс (пассивы):</strong></span>
+                                <strong>{{ "{:,.0f}".format(report.balance_liab_eoy) if report.balance_liab_eoy else "Не указан" }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    Финансовые отчеты для данной компании отсутствуют в базе данных.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
