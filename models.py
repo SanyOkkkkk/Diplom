@@ -1,6 +1,8 @@
+# models.py
 import sqlite3
 import math
 from typing import List, Dict, Optional, Tuple
+from api_service import api_client
 
 DB_PATH = 'finance.db'
 RESULTS_PER_PAGE = 50
@@ -10,8 +12,8 @@ class CompanyModel:
     """Модель для работы с данными компаний"""
 
     @staticmethod
-    def get_by_inn(inn: str) -> Optional[sqlite3.Row]:
-        """Получить информацию о компании по ИНН"""
+    def get_by_inn_from_db(inn: str) -> Optional[sqlite3.Row]:
+        """Получить базовую информацию о компании из БД (для поиска)"""
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
@@ -36,13 +38,33 @@ class CompanyModel:
         return company
 
     @staticmethod
-    def get_reports(inn: str) -> List[sqlite3.Row]:
-        """Получить финансовые отчеты компании"""
+    def get_by_inn_from_api(inn: str) -> Optional[Dict]:
+        """Получить полную информацию о компании из API"""
+        # Получаем общую информацию о компании
+        company_data = api_client.get_counterparty(inn=inn, filters=["OWNER_BLOCK", "ADDRESS_BLOCK"])
+
+        if not company_data:
+            return None
+
+        # Получаем финансовую информацию
+        finance_data = api_client.get_finance(inn=inn)
+
+        # Объединяем данные
+        result = {
+            'company_info': company_data,
+            'finance_info': finance_data,
+            'inn': inn
+        }
+
+        return result
+
+    @staticmethod
+    def get_reports_from_db(inn: str) -> List[sqlite3.Row]:
+        """Получить финансовые отчеты компании из БД (для совместимости)"""
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
 
-        # Сначала получаем company_id
         cur.execute("""
             SELECT company_id
             FROM company
@@ -58,7 +80,6 @@ class CompanyModel:
 
         company_id = company_row['company_id']
 
-        # Получаем отчеты
         cur.execute("""
             SELECT *
             FROM report
@@ -72,7 +93,7 @@ class CompanyModel:
 
 
 class SearchService:
-    """Сервис для поиска компаний"""
+    """Сервис для поиска компаний (остается без изменений)"""
 
     @staticmethod
     def search_by_name(search_term: str, page: int = 1) -> Tuple[List[sqlite3.Row], int]:

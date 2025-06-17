@@ -1,9 +1,10 @@
+# routes.py
 from flask import render_template, request, session
 from services import CompanyService, SearchServiceFacade, SessionManager
 
 
 class SearchController:
-    """Контроллер для поиска"""
+    """Контроллер для поиска (остается без изменений)"""
 
     @staticmethod
     def index():
@@ -66,8 +67,8 @@ class CompanyController:
 
     @staticmethod
     def company_details(inn: str):
-        """Страница с детальной информацией о компании"""
-        company, reports = CompanyService.get_company_with_reports(inn)
+        """Страница с детальной информацией о компании (теперь из API)"""
+        company, reports = CompanyService.get_company_with_reports_from_api(inn)
 
         if not company:
             return render_template("search.html", error="Компания не найдена"), 404
@@ -78,8 +79,8 @@ class CompanyController:
 
     @staticmethod
     def analytics(inn: str):
-        """Страница с финансовой аналитикой компании"""
-        company, reports = CompanyService.get_company_with_reports(inn)
+        """Страница с финансовой аналитикой компании (теперь из API)"""
+        company, reports = CompanyService.get_company_with_reports_from_api(inn)
 
         if not company:
             return render_template("search.html", error="Компания не найдена"), 404

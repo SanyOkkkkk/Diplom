@@ -11,7 +11,7 @@
             background-color: #f9f9f9;
         }
         .details-container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: auto;
         }
         .company-info {
@@ -52,6 +52,14 @@
         .btn-group .btn:last-child {
             margin-right: 0;
         }
+        .status-active {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-inactive {
+            color: #dc3545;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -69,27 +77,105 @@
             <div class="row">
                 <div class="col-md-6">
                     <div class="metric-row">
+                        <span class="metric-label">Полное наименование:</span> {{ company.full_name or "Не указано" }}
+                    </div>
+                    <div class="metric-row">
                         <span class="metric-label">ИНН:</span> {{ company.inn }}
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">ОГРН:</span> {{ company.ogrn or "Не указан" }}
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">КПП:</span> {{ company.kpp or "Не указан" }}
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Форма собственности:</span> {{ company.opf or "Не указана" }}
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Дата регистрации:</span> {{ company.registration_date or "Не указана" }}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="metric-row">
+                        <span class="metric-label">Статус:</span>
+                        <span class="{% if company.status.active_status %}status-active{% else %}status-inactive{% endif %}">
+                            {{ company.status.status_rus_short or "Неизвестно" }}
+                        </span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Уставный капитал:</span> {{ company.charter_capital or "Не указан" }}
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Адрес:</span> {{ company.address or "Не указан" }}
                     </div>
                     <div class="metric-row">
                         <span class="metric-label">Основной ОКВЭД:</span> {{ company.okved or "Не указан" }}
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">Дополнительный ОКВЭД:</span> {{ company.okved_o or "Не указан" }}
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="metric-row">
-                        <span class="metric-label">Форма собственности:</span> {{ company.tip or "Не указана" }}
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">Единица измерения:</span> {{ company.measure or "Не указана" }}
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">Местоположение:</span> {{ company.location }}
+                        <span class="metric-label">Дополнительные ОКВЭД:</span> {{ company.okved_o or "Не указаны" }}
                     </div>
                 </div>
             </div>
+
+            <!-- Руководители -->
+            {% if company.managers %}
+            <div class="mt-3">
+                <h5>Руководители:</h5>
+                {% for manager in company.managers %}
+                <div class="metric-row">
+                    <span class="metric-label">{{ manager.position or "Руководитель" }}:</span> {{ manager.name }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Учредители -->
+            {% if company.owners %}
+            <div class="mt-3">
+                <h5>Учредители:</h5>
+                {% if company.owners.fl %}
+                    {% for owner in company.owners.fl %}
+                    <div class="metric-row">
+                        <span class="metric-label">{{ owner.name }}:</span> {{ owner.share }}% ({{ owner.captable_size }} руб.)
+                    </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Налоговые режимы -->
+            {% if company.tax_mode_info %}
+            <div class="mt-3">
+                <h5>Налоговые режимы:</h5>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="metric-row">
+                            <span class="metric-label">УСН:</span>
+                            <span class="{% if company.tax_mode_info.usn_sign %}metric-positive{% else %}metric-negative{% endif %}">
+                                {% if company.tax_mode_info.usn_sign %}Да{% else %}Нет{% endif %}
+                            </span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">ЕНВД:</span>
+                            <span class="{% if company.tax_mode_info.envd_sign %}metric-positive{% else %}metric-negative{% endif %}">
+                                {% if company.tax_mode_info.envd_sign %}Да{% else %}Нет{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="metric-row">
+                            <span class="metric-label">Общий режим:</span>
+                            <span class="{% if company.tax_mode_info.common_mode %}metric-positive{% else %}metric-negative{% endif %}">
+                                {% if company.tax_mode_info.common_mode %}Да{% else %}Нет{% endif %}
+                            </span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Дата публикации:</span> {{ company.tax_mode_info.publication_date or "Не указана" }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Финансовые отчеты -->
@@ -174,7 +260,7 @@
                 {% endfor %}
             {% else %}
                 <div class="alert alert-info">
-                    Финансовые отчеты для данной компании отсутствуют в базе данных.
+                    Финансовые отчеты для данной компании отсутствуют в API.
                 </div>
             {% endif %}
         </div>
