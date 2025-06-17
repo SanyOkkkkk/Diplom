@@ -4,7 +4,7 @@ from services import CompanyService, SearchServiceFacade, SessionManager
 
 
 class SearchController:
-    """Контроллер для поиска (остается без изменений)"""
+    """Контроллер для поиска"""
 
     @staticmethod
     def index():
@@ -67,19 +67,25 @@ class CompanyController:
 
     @staticmethod
     def company_details(inn: str):
-        """Страница с детальной информацией о компании (теперь из API)"""
+        """Страница с детальной информацией о компании"""
         company, reports = CompanyService.get_company_with_reports_from_api(inn)
 
         if not company:
             return render_template("search.html", error="Компания не найдена"), 404
 
+        # Получаем похожие компании по ОКВЭД
+        similar_companies = []
+        if company.get('okved'):
+            similar_companies = CompanyService.get_similar_companies(inn, company['okved'])
+
         return render_template("company_details.html",
                                company=company,
-                               reports=reports)
+                               reports=reports,
+                               similar_companies=similar_companies)
 
     @staticmethod
     def analytics(inn: str):
-        """Страница с финансовой аналитикой компании (теперь из API)"""
+        """Страница с финансовой аналитикой компании"""
         company, reports = CompanyService.get_company_with_reports_from_api(inn)
 
         if not company:

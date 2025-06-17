@@ -91,6 +91,39 @@ class CompanyModel:
         conn.close()
         return reports
 
+    @staticmethod
+    def get_similar_companies_by_okved(okved: str, current_inn: str, limit: int = 10) -> List[sqlite3.Row]:
+        """Получить похожие компании по ОКВЭД"""
+        if not okved:
+            return []
+
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+
+        # Ищем компании с точно таким же основным ОКВЭД, исключая текущую компанию
+        cur.execute("""
+            SELECT DISTINCT
+                c.name,
+                CASE
+                    WHEN c.inn LIKE '%.0' THEN SUBSTR(c.inn, 1, LENGTH(c.inn) - 2)
+                    ELSE c.inn
+                END as normalized_inn,
+                c.okved,
+                COALESCE(r.name || ', ' || r.federal_district, 'Код региона: ' || c.kod_re) as location
+            FROM company c
+            LEFT JOIN region r ON c.kod_re = r.kod_re
+            WHERE c.okved = ? 
+            AND c.inn != ? 
+            AND (c.inn NOT LIKE '%.0' OR SUBSTR(c.inn, 1, LENGTH(c.inn) - 2) != ?)
+            ORDER BY c.name
+            LIMIT ?
+        """, (okved, current_inn, current_inn, limit))
+
+        similar_companies = cur.fetchall()
+        conn.close()
+        return similar_companies
+
 
 class SearchService:
     """Сервис для поиска компаний (остается без изменений)"""

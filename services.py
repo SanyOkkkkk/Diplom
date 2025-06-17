@@ -12,12 +12,15 @@ class CompanyService:
 
     @staticmethod
     def get_company_with_reports_from_api(inn: str) -> tuple:
-        """Получить компанию и её отчеты из API"""
+        """Получить компанию и её отчеты из API с дополнением данных из БД"""
         # Получаем данные из API
         api_data = CompanyModel.get_by_inn_from_api(inn)
 
         if not api_data:
             return None, []
+
+        # Получаем данные из БД для дополнения ОКВЭД
+        db_company = CompanyModel.get_by_inn_from_db(inn)
 
         # Преобразуем данные API в формат, понятный шаблонам
         company_info = api_data.get('company_info', {})
@@ -39,20 +42,36 @@ class CompanyService:
             'managers': company_info.get('company', {}).get('managers', []),
             'tax_mode_info': company_info.get('company', {}).get('tax_mode_info', {}),
             'location': company_info.get('company', {}).get('address', {}).get('line_address', ''),
-            'okved': '',  # Будет заполнено из okveds если есть
-            'okved_o': ''
+            'okved': '',  # Будет заполнено из БД
+            'okved_o': ''  # Будет заполнено из БД
         }
 
-        # Получаем ОКВЭД из данных
-        okveds = company_info.get('company', {}).get('okveds', [])
-        if okveds:
-            company['okved'] = okveds[0] if len(okveds) > 0 else ''
-            company['okved_o'] = ', '.join(okveds[1:]) if len(okveds) > 1 else ''
+        # ПРИОРИТЕТНО берем ОКВЭД из БД, если есть
+        if db_company:
+            company['okved'] = db_company['okved'] or ''
+            company['okved_o'] = db_company['okved_o'] or ''
+            # Если локация из API пустая, берем из БД
+            if not company['location']:
+                company['location'] = db_company['location'] or ''
+
+        # Если ОКВЭД все еще пустой, пытаемся получить из API (резервный вариант)
+        if not company['okved']:
+            okveds = company_info.get('company', {}).get('okveds', [])
+            if okveds:
+                company['okved'] = okveds[0] if len(okveds) > 0 else ''
+                company['okved_o'] = ', '.join(okveds[1:]) if len(okveds) > 1 else ''
 
         # Преобразуем финансовые данные в формат отчетов
         reports = CompanyService._convert_api_finance_to_reports(finance_info)
 
         return company, reports
+
+    @staticmethod
+    def get_similar_companies(inn: str, okved: str) -> List[Dict]:
+        """Получить похожие компании по ОКВЭД"""
+        if not okved:
+            return []
+        return CompanyModel.get_similar_companies_by_okved(okved, inn, limit=10)
 
     @staticmethod
     def _convert_api_finance_to_reports(finance_info: Dict) -> List[Dict]:
@@ -164,13 +183,13 @@ class CompanyService:
 
 
 class SearchServiceFacade:
-    """Фасад для поисковых сервисов (остается без изменений)"""
+    """Фасад для поисковых сервисов"""
 
     @staticmethod
     def search_companies(query: str, search_type: str, page: int = 1) -> tuple:
         """Поиск компаний по заданным параметрам"""
         if not query:
-            return [], 0
+            return [], 0, 0
 
         if search_type == "inn":
             companies, total_results = SearchService.search_by_inn(query, page)
@@ -186,7 +205,7 @@ class SearchServiceFacade:
 
 
 class SessionManager:
-    """Менеджер для работы с сессиями (остается без изменений)"""
+    """Менеджер для работы с сессиями"""
 
     @staticmethod
     def save_search_params(session: dict, query: str, search_type: str, page: int):
